@@ -1,0 +1,29 @@
+{
+  "name": "discord-google-sheets-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord bot with slash commands, registration, and event signup backed by Google Sheets.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "deploy:commands": "tsx src/deploy-commands.ts",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0"
+  },
+  "overrides": {
+    "undici": "6.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+credentials.json
+*.log
+mbsignup-491003-d420b22e137d.json
