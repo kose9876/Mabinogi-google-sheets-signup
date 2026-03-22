@@ -5,7 +5,6 @@ import {
   ChannelType,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  PermissionFlagsBits,
   SlashCommandBuilder,
   TextChannel
 } from "discord.js";
@@ -16,7 +15,6 @@ export const commands = [
   new SlashCommandBuilder()
     .setName("signup-panel")
     .setDescription("發送下週日期報名面板")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption((option) =>
       option
         .setName("channel")
@@ -36,7 +34,6 @@ export const commands = [
   new SlashCommandBuilder()
     .setName("signup-prune")
     .setDescription("手動清除報名資料，方便測試週次切換")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption((option) =>
       option
         .setName("mode")
