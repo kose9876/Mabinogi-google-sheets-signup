@@ -2,7 +2,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
   ChatInputCommandInteraction,
   EmbedBuilder,
   SlashCommandBuilder,
@@ -14,14 +13,7 @@ import { dayLabels, dayOrder, getDayDateText, getWeekRangeText } from "./utils/t
 export const commands = [
   new SlashCommandBuilder()
     .setName("signup-panel")
-    .setDescription("發送下週日期報名面板")
-    .addChannelOption((option) =>
-      option
-        .setName("channel")
-        .setDescription("要發送報名面板的頻道")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    ),
+    .setDescription("在目前頻道發送下週日期報名面板"),
   new SlashCommandBuilder()
     .setName("signup-status")
     .setDescription("查看指定週次的日期報名狀況")
@@ -45,14 +37,6 @@ export const commands = [
         .setRequired(true)
     )
 ].map((command) => command.toJSON());
-
-function requireTextChannel(
-  interaction: ChatInputCommandInteraction,
-  optionName: string
-): TextChannel | null {
-  const channel = interaction.options.getChannel(optionName, true);
-  return channel instanceof TextChannel ? channel : null;
-}
 
 export function buildSignupButtons(weekKey: string): ActionRowBuilder<ButtonBuilder>[] {
   const weekdayButtons = dayOrder.slice(0, 5).map((dayKey) =>
@@ -99,16 +83,15 @@ export async function buildSignupPanelPayload(weekKey: string): Promise<{
 
 export async function handleChatCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (interaction.commandName === "signup-panel") {
-    const channel = requireTextChannel(interaction, "channel");
-    if (!channel) {
-      await interaction.reply({ content: "請選擇文字頻道。", flags: "Ephemeral" });
+    if (!(interaction.channel instanceof TextChannel)) {
+      await interaction.reply({ content: "請在文字頻道使用此指令。", flags: "Ephemeral" });
       return;
     }
 
     const weekKey = signupService.getManagedWeekKey();
     const payload = await buildSignupPanelPayload(weekKey);
-    await channel.send(payload);
-    await interaction.reply({ content: `已發送 ${getWeekRangeText(weekKey)} 的報名面板到 <#${channel.id}>。`, flags: "Ephemeral" });
+    await interaction.channel.send(payload);
+    await interaction.reply({ content: `已在目前頻道發送 ${getWeekRangeText(weekKey)} 的報名面板。`, flags: "Ephemeral" });
     return;
   }
 
