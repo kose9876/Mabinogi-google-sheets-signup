@@ -14,4 +14,5 @@ export type WeeklySignupRecord = {
   dayLabel: string;
   updatedAt: string;
   displayName?: string;
+  sheetRowNumber?: number;
 };

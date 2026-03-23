@@ -18,7 +18,7 @@ export class MemberDirectoryService {
       return;
     }
 
-    const rows = (await googleSheetsService.getRows(config.membersSheetName)) as MemberRecord[];
+    const rows = (await googleSheetsService.getRows(config.membersSheetName)) as unknown as MemberRecord[];
     this.gameNameByUserId = new Map(
       rows
         .filter((row) => row.discordUserId && row.gameName)

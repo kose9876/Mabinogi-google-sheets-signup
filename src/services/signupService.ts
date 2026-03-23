@@ -38,7 +38,7 @@ export class SignupService {
 
   async getWeekSignups(weekKey: string): Promise<WeeklySignupRecord[]> {
     await this.pruneStaleSignups();
-    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as WeeklySignupRecord[];
+    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
     return rows.filter((row) => row.weekKey === weekKey && dayOrder.includes(row.dayKey as DayKey));
   }
 
@@ -135,7 +135,7 @@ export class SignupService {
   }
 
   async clearAllSignups(): Promise<number> {
-    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as WeeklySignupRecord[];
+    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
     await googleSheetsService.replaceRows(config.signupsSheetName, signupHeaders, []);
     this.lastPrunedWeekKey = this.getManagedWeekKey();
     return rows.length;
@@ -163,18 +163,7 @@ export class SignupService {
   }
 
   private async pruneToWeekKey(weekKey: string): Promise<number> {
-    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as WeeklySignupRecord[];
-    const filtered = rows.filter((row) => row.weekKey === weekKey);
-    const removedCount = rows.length - filtered.length;
-
-    if (removedCount > 0) {
-      await googleSheetsService.replaceRows(
-        config.signupsSheetName,
-        signupHeaders,
-        filtered.map((row) => signupHeaders.map((header) => row[header as keyof WeeklySignupRecord] ?? ""))
-      );
-    }
-
+    const removedCount = await this.removeWeekRowsExcept(weekKey);
     this.lastPrunedWeekKey = weekKey;
     return removedCount;
   }
@@ -217,22 +206,34 @@ export class SignupService {
 
       await googleSheetsService.appendRow(
         config.signupsSheetName,
-        signupHeaders.map((header) => record[header as keyof WeeklySignupRecord] ?? "")
+        signupHeaders.map((header) => String(record[header as keyof WeeklySignupRecord] ?? ""))
       );
     }
   }
 
   private async removeDays(weekKey: string, discordUserId: string, dayKeys: readonly DayKey[]): Promise<void> {
-    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as WeeklySignupRecord[];
-    const filtered = rows.filter(
-      (row) => !(row.weekKey === weekKey && row.discordUserId === discordUserId && dayKeys.includes(row.dayKey as DayKey))
-    );
+    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
+    const rowNumbersToDelete = rows
+      .filter(
+        (row) => row.weekKey === weekKey
+          && row.discordUserId === discordUserId
+          && dayKeys.includes(row.dayKey as DayKey)
+      )
+      .map((row) => row.sheetRowNumber)
+      .filter((rowNumber): rowNumber is number => typeof rowNumber === "number");
 
-    await googleSheetsService.replaceRows(
-      config.signupsSheetName,
-      signupHeaders,
-      filtered.map((row) => signupHeaders.map((header) => row[header as keyof WeeklySignupRecord] ?? ""))
-    );
+    await googleSheetsService.deleteRows(config.signupsSheetName, rowNumbersToDelete);
+  }
+
+  private async removeWeekRowsExcept(weekKey: string): Promise<number> {
+    const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
+    const rowNumbersToDelete = rows
+      .filter((row) => row.weekKey !== weekKey)
+      .map((row) => row.sheetRowNumber)
+      .filter((rowNumber): rowNumber is number => typeof rowNumber === "number");
+
+    await googleSheetsService.deleteRows(config.signupsSheetName, rowNumbersToDelete);
+    return rowNumbersToDelete.length;
   }
 }
 
