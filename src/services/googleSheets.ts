@@ -6,7 +6,6 @@ type Row = Record<string, string>;
 
 export class GoogleSheetsService {
   private sheets: sheets_v4.Sheets;
-  private nextRowIndexBySheet = new Map<string, number>();
 
   constructor() {
     const auth = new GoogleAuth({
@@ -53,26 +52,20 @@ export class GoogleSheetsService {
           values: [headers]
         }
       });
-      this.nextRowIndexBySheet.set(sheetName, 2);
       return;
     }
-
-    this.nextRowIndexBySheet.set(sheetName, values.length + 1);
   }
 
   async appendRow(sheetName: string, row: string[]): Promise<void> {
-    const nextRowIndex = await this.getNextRowIndex(sheetName);
-
-    await this.sheets.spreadsheets.values.update({
+    await this.sheets.spreadsheets.values.append({
       spreadsheetId: config.googleSheetId,
-      range: `${sheetName}!A${nextRowIndex}`,
+      range: `${sheetName}!A:Z`,
       valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
       requestBody: {
         values: [row]
       }
     });
-
-    this.nextRowIndexBySheet.set(sheetName, nextRowIndex + 1);
   }
 
   async getRows(sheetName: string): Promise<Row[]> {
@@ -105,20 +98,6 @@ export class GoogleSheetsService {
         values: [headers, ...rows]
       }
     });
-
-    this.nextRowIndexBySheet.set(sheetName, rows.length + 2);
-  }
-
-  private async getNextRowIndex(sheetName: string): Promise<number> {
-    const cached = this.nextRowIndexBySheet.get(sheetName);
-    if (cached) {
-      return cached;
-    }
-
-    const values = await this.getValues(sheetName);
-    const nextRowIndex = Math.max(values.length + 1, 2);
-    this.nextRowIndexBySheet.set(sheetName, nextRowIndex);
-    return nextRowIndex;
   }
 
   private async getValues(sheetName: string): Promise<string[][]> {

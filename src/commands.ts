@@ -6,6 +6,7 @@ import {
   EmbedBuilder,
   SlashCommandBuilder
 } from "discord.js";
+import { memberDirectoryService } from "./services/memberDirectoryService";
 import { signupService } from "./services/signupService";
 import { dayLabels, dayOrder, getDayDateText, getWeekRangeText } from "./utils/time";
 
@@ -20,6 +21,39 @@ export const commands = [
       option
         .setName("week_key")
         .setDescription("週一日期，例如 2026-03-23；不填則使用目前管理週")
+        .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("signup-add")
+    .setDescription("手動新增指定成員的報名")
+    .addUserOption((option) =>
+      option
+        .setName("member")
+        .setDescription("要新增報名的成員")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("day")
+        .setDescription("要報名的日期")
+        .addChoices(
+          ...dayOrder.map((dayKey) => ({
+            name: dayLabels[dayKey],
+            value: dayKey
+          }))
+        )
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("week_key")
+        .setDescription("週一日期，例如 2026-03-23；不填則使用目前管理週")
+        .setRequired(false)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("game_name")
+        .setDescription("覆蓋顯示名稱；不填則優先使用 members 分頁資料")
         .setRequired(false)
     ),
   new SlashCommandBuilder()
@@ -108,6 +142,27 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       .setColor(0xf08c00);
 
     await interaction.reply({ embeds: [embed], flags: "Ephemeral" });
+    return;
+  }
+
+  if (interaction.commandName === "signup-add") {
+    const targetUser = interaction.options.getUser("member", true);
+    const dayKey = interaction.options.getString("day", true) as typeof dayOrder[number];
+    const weekKey = interaction.options.getString("week_key") || signupService.getManagedWeekKey();
+    const providedGameName = interaction.options.getString("game_name");
+    const member = interaction.options.getMember("member");
+    const fallbackName = member && "displayName" in member
+      ? member.displayName
+      : targetUser.globalName || targetUser.username;
+    const gameName = providedGameName || await memberDirectoryService.getGameName(targetUser.id) || fallbackName;
+
+    const message = await signupService.addManualDay(weekKey, {
+      discordUserId: targetUser.id,
+      username: targetUser.username,
+      gameName
+    }, dayKey);
+
+    await interaction.reply({ content: message, flags: "Ephemeral" });
     return;
   }
 

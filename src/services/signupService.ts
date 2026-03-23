@@ -85,6 +85,24 @@ export class SignupService {
     return missingDays.length === dayOrder.length ? "已報名全部日期。" : "已補報剩餘日期。";
   }
 
+  async addManualDay(weekKey: string, user: SignupUser, dayKey: DayKey): Promise<string> {
+    const signups = await this.getWeekSignups(weekKey);
+    const alreadyJoined = signups.some(
+      (row) => row.discordUserId === user.discordUserId && row.dayKey === dayKey
+    );
+
+    if (alreadyJoined) {
+      return `${user.gameName} 已在 ${dayLabels[dayKey]} 報名。`;
+    }
+
+    if (this.countUsersForDay(signups, dayKey) >= config.maxSignupsPerDay) {
+      return `${dayLabels[dayKey]} 已額滿，無法手動新增。`;
+    }
+
+    await this.addDays(weekKey, user, [dayKey]);
+    return `已為 ${user.gameName} 新增 ${dayLabels[dayKey]} 報名。`;
+  }
+
   async buildSummaryText(weekKey: string): Promise<string> {
     const summary = await this.getWeeklySummary(weekKey);
     const lines = [
