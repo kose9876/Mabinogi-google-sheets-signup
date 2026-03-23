@@ -25,12 +25,19 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  if (action !== "day_all" && !dayOrder.includes(action as DayKey)) {
+  if (action !== "day_all" && action !== "refresh" && !dayOrder.includes(action as DayKey)) {
     await interaction.reply({ content: "未知的報名日期。", flags: "Ephemeral" });
     return;
   }
 
   await interaction.deferUpdate();
+
+  if (action === "refresh") {
+    const payload = await buildSignupPanelPayload(weekKey);
+    await interaction.editReply(payload);
+    await interaction.followUp({ content: "已更新目前報名狀態。", flags: "Ephemeral" });
+    return;
+  }
 
   const fallbackName =
     interaction.member && "displayName" in interaction.member

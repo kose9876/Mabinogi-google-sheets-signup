@@ -43,14 +43,14 @@ export function buildSignupButtons(weekKey: string): ActionRowBuilder<ButtonBuil
     new ButtonBuilder()
       .setCustomId(`signup:${weekKey}:${dayKey}`)
       .setLabel(`${dayLabels[dayKey]} ${getDayDateText(weekKey, dayKey)}`)
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Secondary)
   );
 
   const weekendButtons = dayOrder.slice(5).map((dayKey) =>
     new ButtonBuilder()
       .setCustomId(`signup:${weekKey}:${dayKey}`)
       .setLabel(`${dayLabels[dayKey]} ${getDayDateText(weekKey, dayKey)}`)
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Secondary)
   );
 
   const allButton = new ButtonBuilder()
@@ -58,10 +58,14 @@ export function buildSignupButtons(weekKey: string): ActionRowBuilder<ButtonBuil
     .setLabel("我要打全部")
     .setStyle(ButtonStyle.Danger);
 
+  const refreshButton = new ButtonBuilder()
+    .setCustomId(`signup:${weekKey}:refresh`)
+    .setLabel("狀態更新")
+    .setStyle(ButtonStyle.Primary);
+
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(weekdayButtons),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(weekendButtons),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(allButton)
+    new ActionRowBuilder<ButtonBuilder>().addComponents([...weekendButtons, allButton, refreshButton])
   ];
 }
 
