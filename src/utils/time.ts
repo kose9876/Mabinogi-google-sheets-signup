@@ -43,6 +43,27 @@ function formatInTimeZone(date: Date): string {
   return formatter.format(date);
 }
 
+function getDateTimePartsInTimeZone(date: Date): Record<string, string> {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BOT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  });
+
+  return formatter.formatToParts(date).reduce<Record<string, string>>((parts, part) => {
+    if (part.type !== "literal") {
+      parts[part.type] = part.value;
+    }
+
+    return parts;
+  }, {});
+}
+
 function parseDateParts(dateText: string): { year: number; month: number; day: number } {
   const [year, month, day] = dateText.split("-").map(Number);
   return { year, month, day };
@@ -55,7 +76,8 @@ function addDays(dateText: string, days: number): string {
 }
 
 export function nowIso(): string {
-  return new Date().toISOString();
+  const now = getDateTimePartsInTimeZone(new Date());
+  return `${now.year}-${now.month}-${now.day} ${now.hour}:${now.minute}:${now.second}`;
 }
 
 export function getSignupWeekKey(baseDate: Date = new Date()): string {

@@ -4,8 +4,7 @@ import {
   ButtonStyle,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  SlashCommandBuilder,
-  TextChannel
+  SlashCommandBuilder
 } from "discord.js";
 import { signupService } from "./services/signupService";
 import { dayLabels, dayOrder, getDayDateText, getWeekRangeText } from "./utils/time";
@@ -87,14 +86,15 @@ export async function buildSignupPanelPayload(weekKey: string): Promise<{
 
 export async function handleChatCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   if (interaction.commandName === "signup-panel") {
-    if (!(interaction.channel instanceof TextChannel)) {
+    const channel = interaction.channel;
+    if (!channel?.isTextBased() || !("send" in channel)) {
       await interaction.reply({ content: "請在文字頻道使用此指令。", flags: "Ephemeral" });
       return;
     }
 
     const weekKey = signupService.getManagedWeekKey();
     const payload = await buildSignupPanelPayload(weekKey);
-    await interaction.channel.send(payload);
+    await channel.send(payload);
     await interaction.reply({ content: `已在目前頻道發送 ${getWeekRangeText(weekKey)} 的報名面板。`, flags: "Ephemeral" });
     return;
   }
