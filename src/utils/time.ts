@@ -65,7 +65,11 @@ export function getSignupWeekKey(baseDate: Date = new Date()): string {
   const weekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
   const thisMonday = new Date(date);
   thisMonday.setUTCDate(date.getUTCDate() - (weekday - 1));
-  thisMonday.setUTCDate(thisMonday.getUTCDate() + 7);
+
+  if (weekday === 7) {
+    thisMonday.setUTCDate(thisMonday.getUTCDate() + 7);
+  }
+
   return formatInTimeZone(thisMonday);
 }
 

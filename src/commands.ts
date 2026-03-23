@@ -13,14 +13,14 @@ import { dayLabels, dayOrder, getDayDateText, getWeekRangeText } from "./utils/t
 export const commands = [
   new SlashCommandBuilder()
     .setName("signup-panel")
-    .setDescription("在目前頻道發送下週日期報名面板"),
+    .setDescription("在目前頻道發送目前管理週的日期報名面板"),
   new SlashCommandBuilder()
     .setName("signup-status")
     .setDescription("查看指定週次的日期報名狀況")
     .addStringOption((option) =>
       option
         .setName("week_key")
-        .setDescription("週一日期，例如 2026-03-30；不填則使用下週")
+        .setDescription("週一日期，例如 2026-03-23；不填則使用目前管理週")
         .setRequired(false)
     ),
   new SlashCommandBuilder()
