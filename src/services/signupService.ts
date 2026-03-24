@@ -103,6 +103,20 @@ export class SignupService {
     return `已為 ${user.gameName} 新增 ${dayLabels[dayKey]} 報名。`;
   }
 
+  async removeManualDay(weekKey: string, user: SignupUser, dayKey: DayKey): Promise<string> {
+    const signups = await this.getWeekSignups(weekKey);
+    const alreadyJoined = signups.some(
+      (row) => row.discordUserId === user.discordUserId && row.dayKey === dayKey
+    );
+
+    if (!alreadyJoined) {
+      return `${user.gameName} 目前沒有報名 ${dayLabels[dayKey]}。`;
+    }
+
+    await this.removeDays(weekKey, user.discordUserId, [dayKey]);
+    return `已取消 ${user.gameName} 的 ${dayLabels[dayKey]} 報名。`;
+  }
+
   async buildSummaryText(weekKey: string): Promise<string> {
     const summary = await this.getWeeklySummary(weekKey);
     const lines = [

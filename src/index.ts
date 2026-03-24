@@ -10,6 +10,7 @@ import { buildSignupPanelPayload, handleChatCommand } from "./commands";
 import { config } from "./config";
 import { memberDirectoryService } from "./services/memberDirectoryService";
 import { signupService } from "./services/signupService";
+import { formatButtonLog, formatUserLog, logCliError, logCliInfo } from "./utils/cliLog";
 import { DayKey, dayOrder } from "./utils/time";
 
 const client = new Client({
@@ -18,24 +19,30 @@ const client = new Client({
 
 async function handleButton(interaction: ButtonInteraction): Promise<void> {
   const { customId } = interaction;
+  const actor = formatUserLog(interaction.user);
 
   const [scope, weekKey, action] = customId.split(":");
   if (scope !== "signup" || !weekKey || !action) {
+    logCliInfo(`button invalid by ${actor} customId=${JSON.stringify(customId)}`);
     await interaction.reply({ content: "未知的按鈕操作。", flags: "Ephemeral" });
     return;
   }
 
   if (action !== "day_all" && action !== "refresh" && !dayOrder.includes(action as DayKey)) {
+    logCliInfo(`button invalid-day by ${actor} ${formatButtonLog(interaction, { weekKey, action })}`);
     await interaction.reply({ content: "未知的報名日期。", flags: "Ephemeral" });
     return;
   }
 
+  logCliInfo(`button start by ${actor} ${formatButtonLog(interaction, { weekKey, action })}`);
   await interaction.deferUpdate();
 
   if (action === "refresh") {
     const payload = await buildSignupPanelPayload(weekKey);
     await interaction.editReply(payload);
-    await interaction.followUp({ content: "已更新目前報名狀態。", flags: "Ephemeral" });
+    const message = "已更新目前報名狀態。";
+    await interaction.followUp({ content: message, flags: "Ephemeral" });
+    logCliInfo(`button result by ${actor} ${formatButtonLog(interaction, { weekKey, action, result: message })}`);
     return;
   }
 
@@ -59,15 +66,16 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
   const payload = await buildSignupPanelPayload(weekKey);
   await interaction.editReply(payload);
   await interaction.followUp({ content: message, flags: "Ephemeral" });
+  logCliInfo(`button result by ${actor} ${formatButtonLog(interaction, { weekKey, action, result: message })}`);
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}`);
+  logCliInfo(`logged in as ${readyClient.user.tag}`);
 
   if (config.signupChannelId) {
     const channel = await readyClient.channels.fetch(config.signupChannelId);
     if (channel instanceof TextChannel) {
-      console.log(`Signup channel ready: ${channel.name}`);
+      logCliInfo(`signup channel ready name=${JSON.stringify(channel.name)} id=${channel.id}`);
     }
   }
 });
@@ -84,7 +92,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
   } catch (error) {
-    console.error("Interaction handling failed:", error);
+    if (interaction.isChatInputCommand()) {
+      logCliError(
+        `command failed for ${formatUserLog(interaction.user)} command=${interaction.commandName}`,
+        error
+      );
+    } else if (interaction.isButton()) {
+      logCliError(
+        `button failed for ${formatUserLog(interaction.user)} customId=${JSON.stringify(interaction.customId)}`,
+        error
+      );
+    } else {
+      logCliError("interaction handling failed", error);
+    }
 
     if (error instanceof DiscordAPIError && error.code === 10062) {
       return;
@@ -92,13 +112,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isRepliable()) {
       try {
+        const message = "執行時發生錯誤，請稍後再試。";
         if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ content: "執行時發生錯誤，請稍後再試。", flags: "Ephemeral" });
+          await interaction.followUp({ content: message, flags: "Ephemeral" });
         } else {
-          await interaction.reply({ content: "執行時發生錯誤，請稍後再試。", flags: "Ephemeral" });
+          await interaction.reply({ content: message, flags: "Ephemeral" });
         }
       } catch (replyError) {
-        console.error("Failed to send interaction error response:", replyError);
+        logCliError("failed to send interaction error response", replyError);
       }
     }
   }
@@ -110,6 +131,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error("Bot startup failed:", error);
+  logCliError("bot startup failed", error);
   process.exit(1);
 });
