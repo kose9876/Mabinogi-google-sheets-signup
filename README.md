@@ -1,10 +1,7 @@
 # Discord Google Sheets Signup Bot
-
-使用 `Node.js + TypeScript + discord.js + Google Sheets API` 製作的 Discord 報名 bot。  
 資料儲存在 Google Sheets，成員可以透過按鈕報名，管理者也可以用 slash command 手動新增、取消或清理資料。
 
 ## Features
-
 - 以 Google Sheets 作為報名資料來源
 - Discord slash commands 與按鈕報名介面
 - 每日報名人數上限控制
@@ -13,26 +10,20 @@
 - CLI log 顯示指令、按鈕、使用者、參數與結果
 
 ## Commands
-
 - `/signup-panel`
   在目前頻道發送本週報名面板。
-
 - `/signup-status [week_key]`
   查看指定週次的報名狀態。
-
 - `/signup-add member day [week_key] [game_name]`
   手動幫指定成員加入某一天的報名。
-
 - `/signup-remove member day [week_key]`
   手動取消指定成員某一天的報名。
-
 - `/signup-prune mode`
   清理報名資料。
   `keep_current` 只保留目前管理中的那一週。
   `clear_all` 清空全部報名資料。
 
 ## Signup Behavior
-
 - 使用者按按鈕可切換自己某一天的報名狀態
 - `全選/全取消` 會一次處理整週報名
 - `重新整理` 會刷新目前面板內容
@@ -43,16 +34,13 @@
 - bot 啟動與定時檢查時會清理不是目前管理週的舊資料
 
 ## Google Sheets Structure
-
 ### `members`
-
 - `discordUserId`
 - `username`
 - `displayName`
 - `gameName`
 
 ### `signups`
-
 - `weekKey`
 - `discordUserId`
 - `username`
@@ -60,23 +48,7 @@
 - `dayKey`
 - `dayLabel`
 - `updatedAt`
-
-## Environment Variables
-
-參考 [`.env.example`](/Users/kose9/OneDrive/桌面/BriLeith/googlesheetsver/Mabinogi-google-sheets-signup/.env.example)：
-
-```env
-DISCORD_TOKEN=
-DISCORD_CLIENT_ID=
-DISCORD_GUILD_ID=
-GOOGLE_SHEET_ID=
-GOOGLE_APPLICATION_CREDENTIALS=./credentials.json
-MEMBERS_SHEET_NAME=members
-SIGNUP_CHANNEL_ID=
-SIGNUPS_SHEET_NAME=signups
-MAX_SIGNUPS_PER_DAY=8
-```
-
+- 
 ## Google Service Account Setup
 
 1. 在 Google Cloud 建立 service account。
