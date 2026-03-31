@@ -80,19 +80,19 @@ export function nowIso(): string {
   return `${now.year}-${now.month}-${now.day} ${now.hour}:${now.minute}:${now.second}`;
 }
 
-export function getSignupWeekKey(baseDate: Date = new Date()): string {
-  const localDate = formatInTimeZone(baseDate);
-  const { year, month, day } = parseDateParts(localDate);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const weekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
-  const thisMonday = new Date(date);
-  thisMonday.setUTCDate(date.getUTCDate() - (weekday - 1));
-
-  if (weekday === 7) {
-    thisMonday.setUTCDate(thisMonday.getUTCDate() + 7);
+export function isValidWeekKey(weekKey: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekKey)) {
+    return false;
   }
 
-  return formatInTimeZone(thisMonday);
+  const { year, month, day } = parseDateParts(weekKey);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (formatInTimeZone(date) !== weekKey) {
+    return false;
+  }
+
+  return date.getUTCDay() === 1;
 }
 
 export function getWeekRangeText(weekKey: string): string {

@@ -9,20 +9,26 @@ import {
 import { memberDirectoryService } from "./services/memberDirectoryService";
 import { signupService } from "./services/signupService";
 import { formatCommandOptions, formatUserLog, logCliInfo } from "./utils/cliLog";
-import { dayLabels, dayOrder, getDayDateText, getWeekRangeText } from "./utils/time";
+import { dayLabels, dayOrder, getDayDateText, getWeekRangeText, isValidWeekKey } from "./utils/time";
 
 export const commands = [
   new SlashCommandBuilder()
     .setName("signup-panel")
-    .setDescription("在目前頻道發送本週報名面板。"),
+    .setDescription("在目前頻道發送指定週次的報名面板。")
+    .addStringOption((option) =>
+      option
+        .setName("week_key")
+        .setDescription("指定週一日期，例如 2026-03-23")
+        .setRequired(true)
+    ),
   new SlashCommandBuilder()
     .setName("signup-status")
     .setDescription("查看指定週次的報名狀態。")
     .addStringOption((option) =>
       option
         .setName("week_key")
-        .setDescription("指定週一日期，例如 2026-03-23；不填則使用目前管理中的那一週")
-        .setRequired(false)
+        .setDescription("指定週一日期，例如 2026-03-23")
+        .setRequired(true)
     ),
   new SlashCommandBuilder()
     .setName("signup-add")
@@ -48,8 +54,8 @@ export const commands = [
     .addStringOption((option) =>
       option
         .setName("week_key")
-        .setDescription("指定週一日期，例如 2026-03-23；不填則使用目前管理中的那一週")
-        .setRequired(false)
+        .setDescription("指定週一日期，例如 2026-03-23")
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
@@ -81,8 +87,8 @@ export const commands = [
     .addStringOption((option) =>
       option
         .setName("week_key")
-        .setDescription("指定週一日期，例如 2026-03-23；不填則使用目前管理中的那一週")
-        .setRequired(false)
+        .setDescription("指定週一日期，例如 2026-03-23")
+        .setRequired(true)
     ),
   new SlashCommandBuilder()
     .setName("signup-prune")
@@ -92,10 +98,16 @@ export const commands = [
         .setName("mode")
         .setDescription("清理模式")
         .addChoices(
-          { name: "保留目前管理週", value: "keep_current" },
+          { name: "保留指定週", value: "keep_week" },
           { name: "清空全部報名", value: "clear_all" }
         )
         .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("week_key")
+        .setDescription("清理時要保留的週一日期，例如 2026-03-23")
+        .setRequired(false)
     )
 ].map((command) => command.toJSON());
 
@@ -158,6 +170,16 @@ function logCommandResult(interaction: ChatInputCommandInteraction, result: stri
   );
 }
 
+function getValidatedWeekKey(interaction: ChatInputCommandInteraction, optionName = "week_key"): string | null {
+  const weekKey = interaction.options.getString(optionName, true);
+
+  if (isValidWeekKey(weekKey)) {
+    return weekKey;
+  }
+
+  return null;
+}
+
 export async function handleChatCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   logCommandStart(interaction);
 
@@ -170,7 +192,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
-    const weekKey = signupService.getManagedWeekKey();
+    const weekKey = getValidatedWeekKey(interaction);
+    if (!weekKey) {
+      const message = "week_key 格式錯誤，請輸入週一日期，格式例如 2026-03-23。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
     const payload = await buildSignupPanelPayload(weekKey);
     await channel.send(payload);
     const message = `已在目前頻道發送 ${getWeekRangeText(weekKey)} 的報名面板。`;
@@ -180,7 +209,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
   }
 
   if (interaction.commandName === "signup-status") {
-    const weekKey = interaction.options.getString("week_key") || signupService.getManagedWeekKey();
+    const weekKey = getValidatedWeekKey(interaction);
+    if (!weekKey) {
+      const message = "week_key 格式錯誤，請輸入週一日期，格式例如 2026-03-23。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
     const summary = await signupService.buildSummaryText(weekKey);
     const embed = new EmbedBuilder()
       .setTitle(`${getWeekRangeText(weekKey)} 報名狀態`)
@@ -195,7 +231,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
   if (interaction.commandName === "signup-add") {
     const targetUser = interaction.options.getUser("member", true);
     const dayKey = interaction.options.getString("day", true) as typeof dayOrder[number];
-    const weekKey = interaction.options.getString("week_key") || signupService.getManagedWeekKey();
+    const weekKey = getValidatedWeekKey(interaction);
+    if (!weekKey) {
+      const message = "week_key 格式錯誤，請輸入週一日期，格式例如 2026-03-23。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
     const providedGameName = interaction.options.getString("game_name");
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
@@ -217,7 +260,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
   if (interaction.commandName === "signup-remove") {
     const targetUser = interaction.options.getUser("member", true);
     const dayKey = interaction.options.getString("day", true) as typeof dayOrder[number];
-    const weekKey = interaction.options.getString("week_key") || signupService.getManagedWeekKey();
+    const weekKey = getValidatedWeekKey(interaction);
+    if (!weekKey) {
+      const message = "week_key 格式錯誤，請輸入週一日期，格式例如 2026-03-23。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
       ? member.displayName
@@ -239,9 +289,16 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     const mode = interaction.options.getString("mode", true);
     await interaction.deferReply({ flags: "Ephemeral" });
 
-    if (mode === "keep_current") {
-      const removedCount = await signupService.pruneToManagedWeek();
-      const weekKey = signupService.getManagedWeekKey();
+    if (mode === "keep_week") {
+      const weekKey = interaction.options.getString("week_key");
+      if (!weekKey || !isValidWeekKey(weekKey)) {
+        const message = "keep_week 模式需要有效的 week_key，請輸入週一日期，格式例如 2026-03-23。";
+        await interaction.editReply(message);
+        logCommandResult(interaction, message);
+        return;
+      }
+
+      const removedCount = await signupService.pruneToWeekKey(weekKey);
       const message = `已清理 ${removedCount} 筆舊報名資料，保留 ${getWeekRangeText(weekKey)} 這一週。`;
       await interaction.editReply(message);
       logCommandResult(interaction, message);
