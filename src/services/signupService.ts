@@ -1,6 +1,6 @@
 import { config } from "../config";
 import { WeeklySignupRecord } from "../types";
-import { DayKey, dayLabels, dayOrder, getDayDateText, getSignupWeekKey, getWeekRangeText, nowIso } from "../utils/time";
+import { DayKey, dayLabels, dayOrder, getDayDateText, getWeekRangeText, nowIso } from "../utils/time";
 import { googleSheetsService } from "./googleSheets";
 
 const signupHeaders = [
@@ -12,8 +12,6 @@ const signupHeaders = [
   "dayLabel",
   "updatedAt"
 ];
-
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 type SignupUser = {
   discordUserId: string;
@@ -27,17 +25,11 @@ type WeeklySummary = {
 };
 
 export class SignupService {
-  private cleanupTimer?: NodeJS.Timeout;
-  private lastPrunedWeekKey = "";
-
   async init(): Promise<void> {
     await googleSheetsService.ensureSheet(config.signupsSheetName, signupHeaders);
-    await this.pruneStaleSignups();
-    this.startCleanupTimer();
   }
 
   async getWeekSignups(weekKey: string): Promise<WeeklySignupRecord[]> {
-    await this.pruneStaleSignups();
     const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
     return rows.filter((row) => row.weekKey === weekKey && dayOrder.includes(row.dayKey as DayKey));
   }
@@ -139,46 +131,14 @@ export class SignupService {
     return lines.join("\n").trim();
   }
 
-  getManagedWeekKey(): string {
-    return getSignupWeekKey();
-  }
-
-  async pruneToManagedWeek(): Promise<number> {
-    const managedWeekKey = this.getManagedWeekKey();
-    return this.pruneToWeekKey(managedWeekKey);
-  }
-
   async clearAllSignups(): Promise<number> {
     const rows = (await googleSheetsService.getRows(config.signupsSheetName)) as unknown as WeeklySignupRecord[];
     await googleSheetsService.replaceRows(config.signupsSheetName, signupHeaders, []);
-    this.lastPrunedWeekKey = this.getManagedWeekKey();
     return rows.length;
   }
 
-  private startCleanupTimer(): void {
-    if (this.cleanupTimer) {
-      return;
-    }
-
-    this.cleanupTimer = setInterval(() => {
-      void this.pruneStaleSignups().catch((error) => {
-        console.error("Failed to prune stale signups:", error);
-      });
-    }, CLEANUP_INTERVAL_MS);
-  }
-
-  private async pruneStaleSignups(): Promise<void> {
-    const managedWeekKey = this.getManagedWeekKey();
-    if (this.lastPrunedWeekKey === managedWeekKey) {
-      return;
-    }
-
-    await this.pruneToWeekKey(managedWeekKey);
-  }
-
-  private async pruneToWeekKey(weekKey: string): Promise<number> {
+  async pruneToWeekKey(weekKey: string): Promise<number> {
     const removedCount = await this.removeWeekRowsExcept(weekKey);
-    this.lastPrunedWeekKey = weekKey;
     return removedCount;
   }
 
