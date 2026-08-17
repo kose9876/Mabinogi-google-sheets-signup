@@ -95,6 +95,20 @@ export function isValidWeekKey(weekKey: string): boolean {
   return date.getUTCDay() === 1;
 }
 
+export function isValidDate(dateText: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+    return false;
+  }
+
+  const { year, month, day } = parseDateParts(dateText);
+  return formatInTimeZone(new Date(Date.UTC(year, month - 1, day))) === dateText;
+}
+
+export function getDateText(dateText: string): string {
+  const { month, day } = parseDateParts(dateText);
+  return `${month}/${day}`;
+}
+
 export function getWeekRangeText(weekKey: string): string {
   const start = parseDateParts(weekKey);
   const endText = addDays(weekKey, 6);

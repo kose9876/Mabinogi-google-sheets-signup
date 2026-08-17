@@ -6,9 +6,10 @@ import {
   GatewayIntentBits,
   TextChannel
 } from "discord.js";
-import { buildSignupPanelPayload, handleChatCommand } from "./commands";
+import { buildEventPanelPayload, buildSignupPanelPayload, handleChatCommand } from "./commands";
 import { config } from "./config";
 import { memberDirectoryService } from "./services/memberDirectoryService";
+import { otherSignupService } from "./services/otherSignupService";
 import { signupService } from "./services/signupService";
 import { formatButtonLog, formatUserLog, logCliError, logCliInfo } from "./utils/cliLog";
 import { DayKey, dayOrder } from "./utils/time";
@@ -21,12 +22,48 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
   const { customId } = interaction;
   const actor = formatUserLog(interaction.user);
 
-  const [scope, weekKey, action] = customId.split(":");
-  if (scope !== "signup" || !weekKey || !action) {
+  const [scope, key, action] = customId.split(":");
+  if (!key || !action || (scope !== "signup" && scope !== "other")) {
     logCliInfo(`button invalid by ${actor} customId=${JSON.stringify(customId)}`);
     await interaction.reply({ content: "未知的按鈕操作。", flags: "Ephemeral" });
     return;
   }
+
+  if (scope === "other") {
+    if (action !== "join" && action !== "leave" && action !== "refresh") {
+      await interaction.reply({ content: "未知的副本報名操作。", flags: "Ephemeral" });
+      return;
+    }
+
+    logCliInfo(`button start by ${actor} customId=${JSON.stringify(customId)}`);
+    await interaction.deferUpdate();
+
+    let message: string;
+    if (action === "refresh") {
+      message = "已更新目前報名狀態。";
+    } else {
+      const fallbackName = interaction.member && "displayName" in interaction.member
+        ? interaction.member.displayName
+        : interaction.user.globalName || interaction.user.username;
+      const gameName = await memberDirectoryService.getGameName(interaction.user.id) || fallbackName;
+      const user = {
+        discordUserId: interaction.user.id,
+        username: interaction.user.username,
+        gameName
+      };
+      message = action === "join"
+        ? await otherSignupService.join(key, user)
+        : await otherSignupService.leave(key, user);
+    }
+
+    const summary = await otherSignupService.getSummary(key);
+    await interaction.editReply(buildEventPanelPayload(summary));
+    await interaction.followUp({ content: message, flags: "Ephemeral" });
+    logCliInfo(`button result by ${actor} customId=${JSON.stringify(customId)} result=${JSON.stringify(message)}`);
+    return;
+  }
+
+  const weekKey = key;
 
   if (action !== "day_all" && action !== "refresh" && !dayOrder.includes(action as DayKey)) {
     logCliInfo(`button invalid-day by ${actor} ${formatButtonLog(interaction, { weekKey, action })}`);
@@ -127,6 +164,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 async function main(): Promise<void> {
   await signupService.init();
+  await otherSignupService.init();
   await client.login(config.discordToken);
 }
 

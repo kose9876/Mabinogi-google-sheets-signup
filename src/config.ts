@@ -22,6 +22,7 @@ export const config = {
   ),
   membersSheetName: process.env.MEMBERS_SHEET_NAME || "members",
   signupsSheetName: process.env.SIGNUPS_SHEET_NAME || "signups",
+  otherSignupsSheetName: process.env.OTHER_SIGNUPS_SHEET_NAME || "othersingups",
   signupChannelId: process.env.SIGNUP_CHANNEL_ID || "",
   maxSignupsPerDay: Number(process.env.MAX_SIGNUPS_PER_DAY || "8")
 };

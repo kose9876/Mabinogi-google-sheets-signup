@@ -7,9 +7,10 @@ import {
   SlashCommandBuilder
 } from "discord.js";
 import { memberDirectoryService } from "./services/memberDirectoryService";
+import { EventSummary, otherSignupService } from "./services/otherSignupService";
 import { signupService } from "./services/signupService";
 import { formatCommandOptions, formatUserLog, logCliInfo } from "./utils/cliLog";
-import { dayLabels, dayOrder, getDayDateText, getWeekRangeText, isValidWeekKey } from "./utils/time";
+import { dayLabels, dayOrder, getDateText, getDayDateText, getWeekRangeText, isValidDate, isValidWeekKey } from "./utils/time";
 
 export const commands = [
   new SlashCommandBuilder()
@@ -108,6 +109,21 @@ export const commands = [
         .setName("week_key")
         .setDescription("清理時要保留的週一日期，例如 2026-03-23")
         .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("event-panel")
+    .setDescription("建立臨時副本報名面板。")
+    .addStringOption((option) =>
+      option
+        .setName("date")
+        .setDescription("副本日期，例如 2026-07-20")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("dungeon")
+        .setDescription("想打的副本，例如 雪VH 或 貓本")
+        .setRequired(true)
     )
 ].map((command) => command.toJSON());
 
@@ -158,6 +174,37 @@ export async function buildSignupPanelPayload(weekKey: string): Promise<{
   };
 }
 
+export function buildEventButtons(eventId: string): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`other:${eventId}:join`)
+        .setLabel("我要參加")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`other:${eventId}:leave`)
+        .setLabel("取消參加")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`other:${eventId}:refresh`)
+        .setLabel("重新整理")
+        .setStyle(ButtonStyle.Primary)
+    )
+  ];
+}
+
+export function buildEventPanelPayload(summary: EventSummary): {
+  embeds: EmbedBuilder[];
+  components: ActionRowBuilder<ButtonBuilder>[];
+} {
+  const embed = new EmbedBuilder()
+    .setTitle(`${getDateText(summary.date)} ${summary.dungeonName} 報名`)
+    .setDescription(otherSignupService.buildSummaryText(summary))
+    .setColor(0x2f9e44);
+
+  return { embeds: [embed], components: buildEventButtons(summary.eventId) };
+}
+
 function logCommandStart(interaction: ChatInputCommandInteraction): void {
   logCliInfo(
     `command start by ${formatUserLog(interaction.user)} command=${interaction.commandName} ${formatCommandOptions(interaction)}`
@@ -200,10 +247,11 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const payload = await buildSignupPanelPayload(weekKey);
     await channel.send(payload);
     const message = `已在目前頻道發送 ${getWeekRangeText(weekKey)} 的報名面板。`;
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
@@ -217,13 +265,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const summary = await signupService.buildSummaryText(weekKey);
     const embed = new EmbedBuilder()
       .setTitle(`${getWeekRangeText(weekKey)} 報名狀態`)
       .setDescription(summary)
       .setColor(0xf08c00);
 
-    await interaction.reply({ embeds: [embed], flags: "Ephemeral" });
+    await interaction.editReply({ embeds: [embed] });
     logCommandResult(interaction, `status shown for week=${weekKey}`);
     return;
   }
@@ -239,6 +288,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const providedGameName = interaction.options.getString("game_name");
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
@@ -252,7 +302,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       gameName
     }, dayKey);
 
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
@@ -268,6 +318,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
       ? member.displayName
@@ -280,7 +331,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       gameName
     }, dayKey);
 
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
@@ -314,6 +365,40 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     }
 
     const message = "未知的清理模式。";
+    await interaction.editReply(message);
+    logCommandResult(interaction, message);
+    return;
+  }
+
+  if (interaction.commandName === "event-panel") {
+    const channel = interaction.channel;
+    if (!channel?.isTextBased() || !("send" in channel)) {
+      const message = "請在文字頻道使用此指令。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
+    const date = interaction.options.getString("date", true);
+    if (!isValidDate(date)) {
+      const message = "date 格式錯誤，請輸入日期，格式例如 2026-07-20。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
+    const dungeonName = interaction.options.getString("dungeon", true).trim();
+    if (!dungeonName) {
+      const message = "請輸入想打的副本名稱。";
+      await interaction.reply({ content: message, flags: "Ephemeral" });
+      logCommandResult(interaction, message);
+      return;
+    }
+
+    await interaction.deferReply({ flags: "Ephemeral" });
+    const summary = await otherSignupService.createEvent(date, dungeonName);
+    await channel.send(buildEventPanelPayload(summary));
+    const message = `已建立 ${getDateText(date)} ${dungeonName} 的臨時副本報名面板。`;
     await interaction.editReply(message);
     logCommandResult(interaction, message);
   }

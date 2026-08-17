@@ -1,6 +1,12 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 credentials.json
+credentials*.json
+service-account*.json
+*.pem
+*.key
 *.log
 mbsignup-491003-d420b22e137d.json
