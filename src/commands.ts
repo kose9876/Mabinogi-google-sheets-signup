@@ -200,10 +200,11 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const payload = await buildSignupPanelPayload(weekKey);
     await channel.send(payload);
     const message = `已在目前頻道發送 ${getWeekRangeText(weekKey)} 的報名面板。`;
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
@@ -217,13 +218,14 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const summary = await signupService.buildSummaryText(weekKey);
     const embed = new EmbedBuilder()
       .setTitle(`${getWeekRangeText(weekKey)} 報名狀態`)
       .setDescription(summary)
       .setColor(0xf08c00);
 
-    await interaction.reply({ embeds: [embed], flags: "Ephemeral" });
+    await interaction.editReply({ embeds: [embed] });
     logCommandResult(interaction, `status shown for week=${weekKey}`);
     return;
   }
@@ -239,6 +241,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const providedGameName = interaction.options.getString("game_name");
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
@@ -252,7 +255,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       gameName
     }, dayKey);
 
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
@@ -268,6 +271,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       return;
     }
 
+    await interaction.deferReply({ flags: "Ephemeral" });
     const member = interaction.options.getMember("member");
     const fallbackName = member && "displayName" in member
       ? member.displayName
@@ -280,7 +284,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
       gameName
     }, dayKey);
 
-    await interaction.reply({ content: message, flags: "Ephemeral" });
+    await interaction.editReply(message);
     logCommandResult(interaction, message);
     return;
   }
