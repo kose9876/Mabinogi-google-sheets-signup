@@ -45,10 +45,6 @@ export class SignupService {
       return { added: false, message: `已取消 ${dayLabels[dayKey]} 報名。` };
     }
 
-    if (this.countUsersForDay(signups, dayKey) >= config.maxSignupsPerDay) {
-      return { added: false, message: `${dayLabels[dayKey]} 已額滿。` };
-    }
-
     await this.addDays(weekKey, user, [dayKey]);
     return { added: true, message: `已報名 ${dayLabels[dayKey]}。` };
   }
@@ -65,14 +61,6 @@ export class SignupService {
     }
 
     const missingDays = dayOrder.filter((dayKey) => !userDays.has(dayKey));
-    const fullDays = missingDays.filter(
-      (dayKey) => this.countUsersForDay(signups, dayKey) >= config.maxSignupsPerDay
-    );
-
-    if (fullDays.length > 0) {
-      return `以下日期已額滿，無法全選：${fullDays.map((dayKey) => dayLabels[dayKey]).join("、")}`;
-    }
-
     await this.addDays(weekKey, user, missingDays);
     return missingDays.length === dayOrder.length ? "已報名全部日期。" : "已補報剩餘日期。";
   }
@@ -85,10 +73,6 @@ export class SignupService {
 
     if (alreadyJoined) {
       return `${user.gameName} 已在 ${dayLabels[dayKey]} 報名。`;
-    }
-
-    if (this.countUsersForDay(signups, dayKey) >= config.maxSignupsPerDay) {
-      return `${dayLabels[dayKey]} 已額滿，無法手動新增。`;
     }
 
     await this.addDays(weekKey, user, [dayKey]);
@@ -114,7 +98,7 @@ export class SignupService {
     const lines = [
       `${getWeekRangeText(weekKey)} 報名`,
       "",
-      `每一天最多 ${config.maxSignupsPerDay} 人，請點按下方按鈕報名或取消。`,
+      "不限人數，請點按下方按鈕報名或取消。",
       ""
     ];
 
@@ -123,7 +107,7 @@ export class SignupService {
       const names = users.length > 0
         ? users.map((row) => row.gameName || row.displayName || row.username).join("、")
         : "尚無人報名";
-      lines.push(`${dayLabels[dayKey]} (${getDayDateText(weekKey, dayKey)}) ${users.length}/${config.maxSignupsPerDay}`);
+      lines.push(`${dayLabels[dayKey]} (${getDayDateText(weekKey, dayKey)}) ${users.length} 人`);
       lines.push(names);
       lines.push("");
     }
@@ -160,10 +144,6 @@ export class SignupService {
     }
 
     return { weekKey, dayUsers };
-  }
-
-  private countUsersForDay(signups: WeeklySignupRecord[], dayKey: DayKey): number {
-    return signups.filter((row) => row.dayKey === dayKey).length;
   }
 
   private async addDays(weekKey: string, user: SignupUser, dayKeys: DayKey[]): Promise<void> {

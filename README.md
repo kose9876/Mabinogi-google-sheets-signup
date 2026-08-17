@@ -4,9 +4,9 @@
 ## Features
 - 以 Google Sheets 作為報名資料來源
 - Discord slash commands 與按鈕報名介面
-- 每日報名人數上限控制
+- 每週固定日期報名不限人數
+- 臨時副本自由輸入報名面板
 - 支援成員名稱對照表 `members`
-- 自動清理非目前管理週的舊資料
 - CLI log 顯示指令、按鈕、使用者、參數與結果
 
 ## Commands
@@ -20,18 +20,19 @@
   手動取消指定成員某一天的報名。
 - `/signup-prune mode`
   清理報名資料。
-  `keep_current` 只保留目前管理中的那一週。
+  `keep_week` 只保留指定的那一週。
   `clear_all` 清空全部報名資料。
+- `/event-panel date dungeon`
+  建立指定日期與副本名稱的臨時報名面板。
 
 ## Signup Behavior
 - 使用者按按鈕可切換自己某一天的報名狀態
 - `全選/全取消` 會一次處理整週報名
 - `重新整理` 會刷新目前面板內容
-- 每一天最多 `MAX_SIGNUPS_PER_DAY` 人
+- 每一天不限報名人數
 - 名稱顯示優先順序：
   `gameName` from `members` > Discord display name > Discord username
 - bot 啟動時會自動建立缺少的 sheet
-- bot 啟動與定時檢查時會清理不是目前管理週的舊資料
 
 ## Google Sheets Structure
 ### `members`
@@ -48,7 +49,15 @@
 - `dayKey`
 - `dayLabel`
 - `updatedAt`
-- 
+
+### `othersingups`
+- `eventId`
+- `date`
+- `dungeonName`
+- `discordUserId`
+- `username`
+- `gameName`
+- `updatedAt`
 ## Google Service Account Setup
 
 1. 在 Google Cloud 建立 service account。

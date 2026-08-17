@@ -16,3 +16,14 @@ export type WeeklySignupRecord = {
   displayName?: string;
   sheetRowNumber?: number;
 };
+
+export type OtherSignupRecord = {
+  eventId: string;
+  date: string;
+  dungeonName: string;
+  discordUserId: string;
+  username: string;
+  gameName: string;
+  updatedAt: string;
+  sheetRowNumber?: number;
+};
